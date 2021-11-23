@@ -1,42 +1,43 @@
 import umqtt_robust2
 import GPSfunk
-import sved
-import Neopixel_debugging
+import sved #Importere eget biblioteket "sved.py"
+import Neopixel_debugging #Importere eget bibliotek "Neopixel_debugging.py"
 from machine import Pin
 from time import sleep_ms, sleep
-from Vibrator import *
+from Vibrator import * # "*" Henter ALT hvad biblioteket "vibrator.py" indeholder.
 
-lib = umqtt_robust2
+lib = umqtt_robust2 #Vi "forkorter" umqtt_robust2 til lib, så det er mere overskueligt at kalde bibliotekets funktioner.
 mapFeed = bytes('{:s}/feeds/{:s}'.format(b'NBentsen', b'mapfeed/csv'), 'utf-8')
 speedFeed = bytes('{:s}/feeds/{:s}'.format(b'NBentsen', b'speedfeed/csv'), 'utf-8')
 svedbanken = bytes('{:s}/feeds/{:s}'.format(b'NBentsen', b'svedbanken'), 'utf-8')
 
-while True:
-    if lib.c.is_conn_issue():
-        while lib.c.is_conn_issue():
-            Neopixel_debugging.set_color(255, 0, 0)
+while True: #Så længe dette er sandt sker følgende:
+    if lib.c.is_conn_issue(): #Hvis vi har forbindelses-problemer til 4G/Wifi sker:
+        while lib.c.is_conn_issue(): #Imens det står på:
+            Neopixel_debugging.set_color(255, 0, 0) #Sætter Neopixel-ring til rød.
             # hvis der forbindes returnere is_conn_issue metoden ingen fejlmeddelse
-            lib.c.reconnect()
-            print("reconnect")
+            lib.c.reconnect() #Genetablere forbindelse til 4G/Wifi
+            print("reconnect") #Printer "reconnect" i rebel for sanity-check
         else:
-            lib.c.resubscribe()
-            print('resubscribe')
-    try:
-        lib.c.publish(topic=mapFeed, msg=GPSfunk.main())
+            lib.c.resubscribe() #Går det  ikke, prøver den igen
+            print('resubscribe') #Endnu et sanity-check
+    try: #Når/Hvis den opretter forbindelse prøver den at:
+        lib.c.publish(topic=mapFeed, msg=GPSfunk.main()) #Uploader GPSfunk-funktionen til Adafruit
         speed = GPSfunk.main()
         speed = speed[:4]
         print("speed: ",speed)
-        lib.c.publish(topic=speedFeed, msg=speed)
+        lib.c.publish(topic=speedFeed, msg=speed) #Uploader Speedfeed
         print(type(sved.svedfunk()))
-        sveddata = str(sved.svedfunk())
-        lib.c.publish(topic=svedbanken, msg=sveddata)
-        Neopixel_debugging.set_color(000, 255, 000)
-        sleep(2)
+        sveddata = str(sved.svedfunk()) #Vi definere "Svedfunk"-funktionen som
+                                        #en string, så Adafruit kan bruge værdierne til en graf
+        lib.c.publish(topic=svedbanken, msg=sveddata) #Her uploader den sveddata til "Svedbanken"
+        Neopixel_debugging.set_color(000, 255, 000) #Hvis alting afvikles korrekt, sæt LED-ring til grøn
+        sleep(2) #Powernapper 2 sek
         
         ################ VIBRATOR START#####################
         ##SVE1_VIB##
-        vib_currentTime = time.ticks_ms()
-        if(sve1_runner == True and vib_currentTime - vib_prev_time > vib_interval):  
+        vib_currentTime = time.ticks_ms() #Her definere vi vibratorens tid til at være i ticks i millisekunder.
+        if(sve1_runner == True and vib_currentTime - vib_prev_time > vib_interval): #WE NEED KEVIN!!!!!!
             vib_prev_time = vib_currentTime
             print("sve1_counter", sve1_counter, "vib_state", vib_state)
             if(vib_state == 1):
@@ -66,7 +67,7 @@ while True:
         
         ##SVE2_VIB##
 
-        vib_currentTime = time.ticks_ms()
+        vib_currentTime = time.ticks_ms() #
         if(sve2_runner == True and vib_currentTime - vib_prev_time > vib_interval):  
             vib_prev_time = vib_currentTime
             print("sve2_counter", sve2_counter, "vib_state", vib_state)   
@@ -94,20 +95,20 @@ while True:
             
     ############VIBRATOR SLUT####################
         
-    except KeyboardInterrupt:
+    except KeyboardInterrupt: #Når Ctrl + C er trykket sker følgende:
         print('Ctrl-C pressed...exiting')
-        Neopixel_debugging.set_color(255, 0, 0)
-        lib.c.disconnect()
-        lib.wifi.active(False)
-        lib.sys.exit()
+        Neopixel_debugging.set_color(255, 0, 0) #Sætter LED-ring rød
+        lib.c.disconnect() #Disconnecter fra umqtt_robust2
+        lib.wifi.active(False) #Slukker for Wifi
+        lib.sys.exit() #Exitter systemet
     except OSError as e:
         print('Failed to read sensor.')
     except NameError as e:
         print('NameError', e)
     except TypeError as e:
         print('TypeError')
-    lib.c.check_msg()
-    lib.c.send_queue() 
+    lib.c.check_msg() #Checker om der er beskeder der skal sendes/modtages
+    lib.c.send_queue() #Checker om der ligger beskeder i kø efter et evt. DC/Bottlenecking
 
-lib.c.disconnect()
+lib.c.disconnect() #Skulle der ske bitflips eller lignede der bryder While-true løkken - stopper vi afvikling og sætter LED til Rød
 Neopixel_debugging.set_color(255, 0, 0)
